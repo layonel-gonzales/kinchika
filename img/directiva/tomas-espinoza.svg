@@ -1,0 +1,13 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14120A"></stop>
+      <stop offset="100%" style="stop-color:#001428"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" fill="url(#bg)"></rect>
+  <rect x="1" y="1" width="298" height="298" fill="none" stroke="#C9A84C" stroke-width="1" opacity="0.15"></rect>
+  <circle cx="150" cy="112" r="44" fill="none" stroke="#C9A84C" stroke-width="1.5" opacity="0.5"></circle>
+  <path d="M62,278 Q62,180 150,180 Q238,180 238,278" fill="none" stroke="#C9A84C" stroke-width="1.5" opacity="0.5"></path>
+  <text x="150" y="294" font-family="Arial,sans-serif" font-size="11" fill="rgba(255,255,255,0.3)" text-anchor="middle">Foto pendiente</text>
+</svg>
