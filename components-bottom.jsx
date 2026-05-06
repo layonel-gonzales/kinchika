@@ -235,11 +235,16 @@ function Location() {
             <a href="https://maps.google.com/?q=Los+Copihues+5797,+Lo+Prado" target="_blank" rel="noopener" className="btn btn--outline">Ver en Google Maps →</a>
           </div>
           <div className="location-map">
-            <div className="map-placeholder">
-              <div className="pin"/>
-              <div className="map-label">[ Google Maps embed ]</div>
-              <div style={{fontFamily: 'var(--serif)', fontSize: 14, color: 'var(--ink-3)', fontStyle: 'italic'}}>33°26′S · 70°43′W</div>
-            </div>
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3329.2921497651396!2d-70.72124791200032!3d-33.44169432844727!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9662c476226cdf89%3A0x35845e136ef8434c!2sLos%20Copihues%205797%2C%20Lo%20Prado%2C%20Regi%C3%B3n%20Metropolitana!5e0!3m2!1ses-419!2scl!4v1778029852080!5m2!1ses-419!2scl"
+              width="100%"
+              height="100%"
+              style={{border: 0, display: 'block'}}
+              allowFullScreen=""
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Ubicación Kinchika — Los Copihues 5797, Lo Prado"
+            />
           </div>
         </div>
       </div>
@@ -283,10 +288,14 @@ function Contact() {
           <div className="eyebrow">Aliados</div>
           <h2 className="heading" style={{fontSize: 'clamp(28px, 4vw, 44px)'}}>Nos apoyan</h2>
         </div>
-        <div className="allies-grid">
-          {window.KINCHIKA.ALLIES.map(a => (
-            <a key={a.name} href={a.url} target="_blank" rel="noopener" className="ally">{a.name}</a>
-          ))}
+        <div className="allies-carousel">
+          <div className="allies-track">
+            {[...window.KINCHIKA.ALLIES, ...window.KINCHIKA.ALLIES].map((a, i) => (
+              <a key={i} href={a.url} target="_blank" rel="noopener" className="ally-item" title={a.name}>
+                <img src={a.logo} alt={a.name} />
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </section>

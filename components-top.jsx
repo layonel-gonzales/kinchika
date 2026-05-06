@@ -117,6 +117,7 @@ function HUD() {
   const [temp, setTemp] = useState(18);
   const [spo2, setSpo2] = useState(98);
   const [visible, setVisible] = useState(false);
+  const [open, setOpen] = useState(false);
   const startRef = useRef(Date.now());
 
   useEffect(() => {
@@ -144,29 +145,61 @@ function HUD() {
   const cls = [
     visible ? 'is-visible' : '',
     isDeep ? 'is-deep' : '',
-    isWarning ? 'is-warning' : ''
+    isWarning ? 'is-warning' : '',
+    open ? 'is-open' : ''
   ].filter(Boolean).join(' ');
-
-  const [muted, setMuted] = useState(false);
-  const toggleMute = () => {
-    const playing = AudioEngine.toggle();
-    setMuted(!playing);
-  };
 
   return (
     <div id="hud" className={cls}>
-      <div className="hud__title"><span>Dive Computer</span><span className="led"/></div>
-      <div className="hud__row"><span className="hud__label">Depth</span><span className="hud__value">−{depth}m</span></div>
-      <div className="hud__row"><span className="hud__label">Time</span><span className="hud__value">{time}</span></div>
-      <div className="hud__row"><span className="hud__label">Temp</span><span className="hud__value">{temp}°C</span></div>
-      <div className={'hud__row' + (isWarning ? ' warning' : '')} id="hud-spo2-row">
-        <span className="hud__label">SpO₂</span><span className="hud__value">{spo2}%</span>
-      </div>
-      <div className="hud__progress"><div className="hud__progress-fill" style={{width: depth + '%'}}/></div>
-      <button className="hud__mute" onClick={toggleMute} title={muted ? 'Activar sonido' : 'Silenciar'}>
-        {muted ? '🔇' : '🔊'}
+      <button className="hud__title" onClick={() => setOpen(o => !o)} title={open ? 'Cerrar' : 'Abrir Dive Computer'}>
+        <span>Dive Computer</span>
+        <span style={{display:'flex',alignItems:'center',gap:6}}>
+          <span className="hud__chevron">{open ? '▲' : '▼'}</span>
+          <span className="led"/>
+        </span>
       </button>
+      {open && (
+        <div className="hud__body">
+          <div className="hud__row"><span className="hud__label">Depth</span><span className="hud__value">−{depth}m</span></div>
+          <div className="hud__row"><span className="hud__label">Time</span><span className="hud__value">{time}</span></div>
+          <div className="hud__row"><span className="hud__label">Temp</span><span className="hud__value">{temp}°C</span></div>
+          <div className={'hud__row' + (isWarning ? ' warning' : '')} id="hud-spo2-row">
+            <span className="hud__label">SpO₂</span><span className="hud__value">{spo2}%</span>
+          </div>
+          <div className="hud__progress"><div className="hud__progress-fill" style={{width: depth + '%'}}/></div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// === SOUND BUTTON ===
+function SoundBtn() {
+  const [muted, setMuted] = useState(true);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 200);
+    window.addEventListener('scroll', onScroll);
+    // Sync with actual audio state after overlay resolves
+    const id = setTimeout(() => setMuted(!AudioEngine.isPlaying()), 1600);
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(id); };
+  }, []);
+
+  const toggle = () => {
+    if (!window._kinchikaAudio) {
+      AudioEngine.start();
+      setMuted(false);
+    } else {
+      const playing = AudioEngine.toggle();
+      setMuted(!playing);
+    }
+  };
+
+  return (
+    <button id="sound-btn" className={visible ? 'is-visible' : ''} onClick={toggle} title={muted ? 'Activar sonido' : 'Silenciar'}>
+      {muted ? '🔇' : '🔊'}
+    </button>
   );
 }
 
@@ -279,6 +312,29 @@ function History() {
 }
 
 // === TIMELINE (Apnea history) ===
+function TimelineCard({ t, onEnter, onLeave }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyPrompt = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(t.prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="timeline-node" onMouseEnter={() => onEnter(t)} onMouseLeave={onLeave}>
+      <div className="timeline-card">
+        <span className="era">{t.era}</span>
+        <span className="icon">{t.icon}</span>
+        <h3>{t.title}</h3>
+        <p dangerouslySetInnerHTML={{__html: t.text}}/>
+      </div>
+    </div>
+  );
+}
+
 function Timeline() {
   const [hovered, setHovered] = useState(null);
   return (
@@ -292,16 +348,7 @@ function Timeline() {
         <div className="timeline">
           <div className="timeline-track">
             {window.KINCHIKA.TIMELINE.map(t => (
-              <div key={t.id} className="timeline-node"
-                   onMouseEnter={() => setHovered(t)}
-                   onMouseLeave={() => setHovered(null)}>
-                <div className="timeline-card">
-                  <span className="era">{t.era}</span>
-                  <span className="icon">{t.icon}</span>
-                  <h3>{t.title}</h3>
-                  <p dangerouslySetInnerHTML={{__html: t.text}}/>
-                </div>
-              </div>
+              <TimelineCard key={t.id} t={t} onEnter={setHovered} onLeave={() => setHovered(null)} />
             ))}
           </div>
         </div>
@@ -316,4 +363,4 @@ function Timeline() {
   );
 }
 
-Object.assign(window, { AudioOverlay, TopNav, HUD, Hero, EditorialDivider, Mission, History, Timeline, IconWhatsApp, IconPin, IconCamera });
+Object.assign(window, { AudioOverlay, TopNav, HUD, SoundBtn, Hero, EditorialDivider, Mission, History, Timeline, IconWhatsApp, IconPin, IconCamera });

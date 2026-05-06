@@ -98,16 +98,11 @@ const DIRECTIVAS = {
 };
 
 const TIMELINE = [
-  { id: 'grecia', era: 'S. VIII a.C.', icon: '🏛️', title: 'Antigua Grecia · Kálimnos', img: 'img/timeline/grecia.svg',
-    text: 'Los griegos se sumergían desnudos arrastrando una <em>skandalopetra</em> — piedra pesada — para llegar al fondo. Llenaban su boca con aceite de oliva y lo escupían en profundidad: rompía la refracción de la luz y mejoraba la visibilidad. Aristóteles y Homero ya escribían sobre ellos.' },
-  { id: 'japon', era: 'S. III a.C.', icon: '🌸', title: 'Japón · Las Ama', img: 'img/timeline/japon-ama.svg',
-    text: 'Casi 2.000 años de tradición milenaria de buceo en apnea protagonizada exclusivamente por mujeres. Conocidas como las <em>Mujeres del Mar</em>, recolectaban perlas naturales y mariscos sumergiéndose a grandes profundidades.' },
-  { id: 'corea', era: 'S. XVII', icon: '🌊', title: 'Corea · Las Haenyeo', img: 'img/timeline/corea-haenyeo.svg',
-    text: 'Originarias de la isla de Jeju. Con frecuencia superando los 60 e incluso los 80 años, mantienen viva la tradición de recolectar a mano algas y mariscos, una cultura matriarcal de resistencia y autonomía económica.' },
-  { id: 'pelizzari', era: '1990', icon: '🇮🇹', title: 'Umberto Pelizzari', img: 'img/timeline/pelizzari.svg',
-    text: 'El italiano que estableció nuevos límites para el buceo en apnea moderno, basados en la <strong>relajación y la técnica mental</strong>. Reescribió las posibilidades del cuerpo humano bajo el agua.' },
-  { id: 'molchanova', era: '2005', icon: '⭐', title: 'Natalia Molchanova', img: 'img/timeline/molchanova.svg',
-    text: 'La rusa que en el siglo XXI consolidó el deporte con un dominio absoluto, estableciendo múltiples récords mundiales e integrando la ciencia y el yoga a la disciplina, dejando un legado educativo único.' }
+  { id: 'grecia', era: 'S. VIII a.C.', icon: '🏛️', title: 'Antigua Grecia · Kálimnos', img: 'img/timeline/grecia.png', text: 'Los griegos se sumergían desnudos arrastrando una <em>skandalopetra</em> — piedra pesada — para llegar al fondo. Llenaban su boca con aceite de oliva y lo escupían en profundidad: rompía la refracción de la luz y mejoraba la visibilidad. Aristóteles y Homero ya escribían sobre ellos.'},
+  { id: 'japon', era: 'S. III a.C.', icon: '🌸', title: 'Japón · Las Ama', img: 'img/timeline/japon-ama.png', text: 'Casi 2.000 años de tradición milenaria de buceo en apnea protagonizada exclusivamente por mujeres. Conocidas como las <em>Mujeres del Mar</em>, recolectaban perlas naturales y mariscos sumergiéndose a grandes profundidades.'},
+  { id: 'corea', era: 'S. XVII', icon: '🌊', title: 'Corea · Las Haenyeo', img: 'img/timeline/corea-haenyeo.png', text: 'Originarias de la isla de Jeju. Con frecuencia superando los 60 e incluso los 80 años, mantienen viva la tradición de recolectar a mano algas y mariscos, una cultura matriarcal de resistencia y autonomía económica.'},
+  { id: 'pelizzari', era: '1990', icon: '🇮🇹', title: 'Umberto Pelizzari', img: 'img/timeline/pelizzari.png', text: 'El italiano que estableció nuevos límites para el buceo en apnea moderno, basados en la <strong>relajación y la técnica mental</strong>. Reescribió las posibilidades del cuerpo humano bajo el agua.'},
+  { id: 'molchanova', era: '2005', icon: '⭐', title: 'Natalia Molchanova', img: 'img/timeline/molchanova.png', text: 'La rusa que en el siglo XXI consolidó el deporte con un dominio absoluto, estableciendo múltiples récords mundiales e integrando la ciencia y el yoga a la disciplina, dejando un legado educativo único.'}
 ];
 
 const SCHEDULE = [
@@ -122,11 +117,11 @@ const DISCIPLINAS = [
 ];
 
 const ALLIES = [
-  { name: 'Molchanovs', url: 'https://molchanovs.com/' },
-  { name: 'IND · Instituto Nacional del Deporte', url: 'https://ind.cl/' },
-  { name: 'Lo Prado Deportes', url: 'https://lopradodeportes.cl/' },
-  { name: 'Asosub Santiago', url: 'https://www.instagram.com/asosub.santiago/' },
-  { name: 'FEDESUB Chile', url: 'https://www.fedesub.cl/index.html' }
+  { name: 'Molchanovs', url: 'https://molchanovs.com/', logo: 'img/logos/molchanovs.png' },
+  { name: 'IND · Instituto Nacional del Deporte', url: 'https://ind.cl/', logo: 'img/logos/ind.png' },
+  { name: 'Lo Prado Deportes', url: 'https://lopradodeportes.cl/', logo: 'img/logos/loprado.png' },
+  { name: 'Asosub Santiago', url: 'https://www.instagram.com/asosub.santiago/', logo: 'img/logos/asosub.png' },
+  { name: 'FEDESUB Chile', url: 'https://www.fedesub.cl/index.html', logo: 'img/logos/fedesub.png' }
 ];
 
 window.KINCHIKA = { EVENTS, RESULTS, DIRECTIVAS, TIMELINE, SCHEDULE, DISCIPLINAS, ALLIES };
