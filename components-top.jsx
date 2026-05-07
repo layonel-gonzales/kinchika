@@ -247,7 +247,8 @@ function EditorialDivider() {
     <section className="editorial-divider section" data-screen-label="02 Editorial">
       <div className="container">
         <h2>Club de Buceo<br/>Kinchika</h2>
-        <p className="lead">Somos un club de buceo compuesto por vecinos de la comuna de Lo Prado. Funcionamos sin fines de lucro, comprometidos profundamente con la ecología marina, la cultura submarina y el desarrollo del deporte local.</p>
+        <p className="lead text--desktop">Somos un club de buceo compuesto por vecinos de la comuna de Lo Prado. Funcionamos sin fines de lucro, comprometidos profundamente con la ecología marina, la cultura submarina y el desarrollo del deporte local.</p>
+        <p className="lead text--mobile">Club sin fines de lucro de Lo Prado, comprometido con la ecología marina y el deporte subacuático.</p>
       </div>
     </section>
   );
@@ -263,7 +264,8 @@ function Mission() {
           <h2 className="heading">Nuestra misión</h2>
         </div>
         <div className="mission-card">
-          <div className="quote">Fomentar el desarrollo integral de la comunidad a través de la práctica de deportes subacuáticos y la educación ambiental. Como organización sin fines de lucro, nos dedicamos a la preservación del patrimonio marino y el rescate de la cultura submarina, promoviendo la equidad social y el acceso inclusivo al deporte bajo un modelo de gestión transparente y colaborativo.</div>
+          <div className="quote text--desktop">Fomentar el desarrollo integral de la comunidad a través de la práctica de deportes subacuáticos y la educación ambiental. Como organización sin fines de lucro, nos dedicamos a la preservación del patrimonio marino y el rescate de la cultura submarina, promoviendo la equidad social y el acceso inclusivo al deporte bajo un modelo de gestión transparente y colaborativo.</div>
+          <div className="quote text--mobile">Fomentar la comunidad a través del deporte subacuático y la educación ambiental, con acceso inclusivo y transparencia.</div>
         </div>
         <div className="disciplines-grid">
           {window.KINCHIKA.DISCIPLINAS.map(d => <span key={d} className="badge">{d}</span>)}
@@ -284,8 +286,9 @@ function History() {
         </div>
         <div className="history-grid">
           <div className="history-text">
-            <p>Somos un grupo de vecinos, pobladores de <strong>Barrancas</strong>, que movidos por la pasión por el mar nos hemos consolidado como un club deportivo, social y cultural dedicado a las actividades subacuáticas. Aunque nuestra identidad está arraigada en una zona interior, mantenemos un vínculo vital con el océano a través de campañas ecológicas de limpieza y el apoyo constante a proyectos de cultura marina.</p>
-            <p>Nuestra historia dio un paso decisivo con la apertura de la <strong>piscina municipal de Lo Prado</strong>, espacio que hemos transformado en nuestro centro de entrenamiento. Hemos hecho fuerza con compras al por mayor para adquirir equipamiento especializado y buscando convenios para la obtención de licencias de buceo inicial. Así también nos adjudicamos nuestra propia <strong>boya grupal para prácticas de profundidad</strong>.</p>
+            <p className="history-lead text--desktop">Somos un grupo de vecinos, pobladores de <strong>Barrancas</strong>, que movidos por la pasión por el mar nos hemos consolidado como un club deportivo, social y cultural dedicado a las actividades subacuáticas. Aunque nuestra identidad está arraigada en una zona interior, mantenemos un vínculo vital con el océano a través de campañas ecológicas de limpieza y el apoyo constante a proyectos de cultura marina.</p>
+            <p className="text--desktop">Nuestra historia dio un paso decisivo con la apertura de la <strong>piscina municipal de Lo Prado</strong>, espacio que hemos transformado en nuestro centro de entrenamiento. Hemos hecho fuerza con compras al por mayor para adquirir equipamiento especializado y buscando convenios para la obtención de licencias de buceo inicial. Así también nos adjudicamos nuestra propia <strong>boya grupal para prácticas de profundidad</strong>.</p>
+            <p className="history-lead text--mobile">Vecinos de <strong>Barrancas</strong> unidos por el mar. Entrenamos en la <strong>piscina de Lo Prado</strong> con equipamiento propio y boya grupal para profundidad.</p>
             <p>Somos una comunidad que derriba distancias geográficas para sumergirse en el deporte y el cuidado del medio ambiente marino.</p>
           </div>
           <div className="instructors">
@@ -312,7 +315,7 @@ function History() {
 }
 
 // === TIMELINE (Apnea history) ===
-function TimelineCard({ t, onEnter, onLeave }) {
+function TimelineCard({ t, onEnter, onLeave, onToggle, isSelected }) {
   const [copied, setCopied] = useState(false);
 
   const copyPrompt = (e) => {
@@ -324,19 +327,36 @@ function TimelineCard({ t, onEnter, onLeave }) {
   };
 
   return (
-    <div className="timeline-node" onMouseEnter={() => onEnter(t)} onMouseLeave={onLeave}>
+    <div
+      className={'timeline-node' + (isSelected ? ' is-selected' : '')}
+      onMouseEnter={() => onEnter(t)}
+      onMouseLeave={onLeave}
+      onClick={onToggle}
+    >
       <div className="timeline-card">
         <span className="era">{t.era}</span>
         <span className="icon">{t.icon}</span>
         <h3>{t.title}</h3>
-        <p dangerouslySetInnerHTML={{__html: t.text}}/>
+        <p className="text--desktop" dangerouslySetInnerHTML={{__html: t.text}}/>
+        <p className="text--mobile" dangerouslySetInnerHTML={{__html: t.textMobile}}/>
       </div>
+      {isSelected && (
+        <div className="timeline-inline-img">
+          <img src={t.img} alt={t.title}/>
+        </div>
+      )}
     </div>
   );
 }
 
 function Timeline() {
   const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(null);
+
+  const handleToggle = (t) => {
+    setSelected(prev => prev?.id === t.id ? null : t);
+  };
+
   return (
     <section id="apnea-historia" className="section section--wide" data-screen-label="05 Historia del apnea">
       <div className="container">
@@ -348,7 +368,14 @@ function Timeline() {
         <div className="timeline">
           <div className="timeline-track">
             {window.KINCHIKA.TIMELINE.map(t => (
-              <TimelineCard key={t.id} t={t} onEnter={setHovered} onLeave={() => setHovered(null)} />
+              <TimelineCard
+                key={t.id}
+                t={t}
+                onEnter={setHovered}
+                onLeave={() => setHovered(null)}
+                onToggle={() => handleToggle(t)}
+                isSelected={selected?.id === t.id}
+              />
             ))}
           </div>
         </div>

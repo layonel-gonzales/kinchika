@@ -2,8 +2,184 @@
 
 const { useState: _useState, useEffect: _useEffect } = React;
 
+// === SIMULATOR HELPERS ===
+const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+function genTable(type, pbSecs, reps) {
+  if (type === 'O2') {
+    // Apnea constante ~80% PB · Descanso decrece desde hold hasta ~35% hold
+    const hold = Math.max(30, Math.round(pbSecs * 0.8));
+    const restMin = Math.max(30, Math.round(hold * 0.35));
+    const step = Math.round((hold - restMin) / Math.max(1, reps - 1));
+    return Array.from({ length: reps }, (_, i) => ({
+      hold,
+      rest: i < reps - 1 ? Math.max(restMin, hold - i * step) : 0
+    }));
+  }
+  // CO2: Descanso fijo 2 min · Apnea crece de 50% a 90% PB
+  const holdStart = Math.max(20, Math.round(pbSecs * 0.5));
+  const holdEnd   = Math.round(pbSecs * 0.9);
+  const step      = reps > 1 ? Math.round((holdEnd - holdStart) / (reps - 1)) : 0;
+  return Array.from({ length: reps }, (_, i) => ({
+    hold: holdStart + i * step,
+    rest: i < reps - 1 ? 120 : 0
+  }));
+}
+
+function useIsMobile() {
+  const [mob, setMob] = useState(window.innerWidth <= 900);
+  useEffect(() => {
+    const h = () => setMob(window.innerWidth <= 900);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mob;
+}
+
+// === APNEA TABLE SIMULATOR ===
+function ApneaTable({ type }) {
+  const [pbMin, setPbMin] = useState(2);
+  const [pbSec, setPbSec] = useState(0);
+  const [reps,  setReps]  = useState(8);
+  // s = { phase: 'idle'|'hold'|'rest'|'done', rep, secs }
+  const [s, setS] = useState({ phase: 'idle', rep: 0, secs: 0 });
+
+  const pbSecs = pbMin * 60 + Math.min(59, pbSec);
+  const table  = React.useMemo(() => genTable(type, pbSecs, reps), [type, pbSecs, reps]);
+
+  // Reset cuando cambia la configuración
+  useEffect(() => {
+    setS({ phase: 'idle', rep: 0, secs: 0 });
+  }, [table]);
+
+  // Un tick por segundo mientras está corriendo.
+  // useEffect([s, table]) garantiza que cada closure ve la tabla y el estado actuales.
+  // setS con función updater evita closures obsoletos.
+  useEffect(() => {
+    if (s.phase === 'idle' || s.phase === 'done') return;
+    const id = setTimeout(() => {
+      setS(c => {
+        if (c.secs > 1) return { ...c, secs: c.secs - 1 };
+        if (c.phase === 'hold') {
+          if (c.rep < table.length - 1 && table[c.rep].rest > 0)
+            return { phase: 'rest', rep: c.rep, secs: table[c.rep].rest };
+          return { phase: 'done', rep: c.rep, secs: 0 };
+        }
+        const next = c.rep + 1;
+        return { phase: 'hold', rep: next, secs: table[next].hold };
+      });
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [s, table]);
+
+  const { phase, rep, secs } = s;
+  const isIdle  = phase === 'idle';
+  const isDone  = phase === 'done';
+  const active  = phase === 'hold' || phase === 'rest';
+
+  const doStart = () => setS({ phase: 'hold', rep: 0, secs: table[0].hold });
+  const doStop  = () => setS({ phase: 'idle', rep: 0, secs: 0 });
+
+  const isO2 = type === 'O2';
+  const holdPreview = isO2
+    ? fmt(Math.max(30, Math.round(pbSecs * 0.8)))
+    : fmt(Math.max(20, Math.round(pbSecs * 0.5)));
+
+  return (
+    <div className="sim">
+      {/* Header */}
+      <div className="sim__head">
+        <span className={'sim__badge' + (isO2 ? ' o2' : ' co2')}>{isO2 ? 'O₂' : 'CO₂'}</span>
+        <div>
+          <div className="sim__title">{isO2 ? 'Tabla de Oxígeno' : 'Tabla de CO₂'}</div>
+          <div className="sim__desc">
+            {isO2
+              ? 'Apnea constante · descanso decreciente — tolerancia a la hipoxia progresiva'
+              : 'Apnea creciente · descanso constante — tolerancia a la hipercapnia'}
+          </div>
+        </div>
+      </div>
+
+      {/* Config — only when idle */}
+      {isIdle && (
+        <div className="sim__config">
+          <div className="sim__config-field">
+            <label>Marca personal</label>
+            <div className="sim__time-input">
+              <input type="number" min="0" max="10" value={pbMin}
+                onChange={e => setPbMin(Math.max(0, Math.min(10, +e.target.value || 0)))} />
+              <span>:</span>
+              <input type="number" min="0" max="59" value={String(pbSec).padStart(2,'0')}
+                onChange={e => setPbSec(Math.max(0, Math.min(59, +e.target.value || 0)))} />
+            </div>
+          </div>
+          <div className="sim__config-field">
+            <label>Series</label>
+            <select value={reps} onChange={e => setReps(+e.target.value)}>
+              {[4,6,8,10,12].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="sim__config-field">
+            <label>{isO2 ? 'Apnea objetivo' : 'Descanso fijo'}</label>
+            <span className="sim__config-preview">{isO2 ? holdPreview : '02:00'}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Timer — when running or done */}
+      {(active || isDone) && (
+        <div className={'sim__timer' + (phase === 'hold' ? ' hold' : phase === 'rest' ? ' rest' : ' done')}>
+          <div className="sim__timer-label">
+            {isDone ? 'Sesión completada' : phase === 'hold' ? `Serie ${rep + 1} · Apnea` : `Serie ${rep + 1} · Descanso`}
+          </div>
+          <div className="sim__timer-count">{isDone ? '✓' : fmt(secs)}</div>
+          {!isDone && (
+            <div className="sim__timer-next">
+              {phase === 'hold' && rep < table.length - 1 && table[rep].rest > 0
+                && `próx. descanso · ${fmt(table[rep].rest)}`}
+              {phase === 'rest' && rep < table.length - 1
+                && `próx. apnea serie ${rep + 2} · ${fmt(table[rep + 1].hold)}`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="sim__table">
+        <div className="sim__row sim__row--head">
+          <span>#</span><span>Apnea</span><span>Descanso</span>
+        </div>
+        {table.map((row, i) => (
+          <div key={i} className={
+            'sim__row'
+            + (active && phase === 'hold' && rep === i ? ' is-hold' : '')
+            + (active && phase === 'rest' && rep === i ? ' is-rest' : '')
+            + (isDone ? ' is-done-row' : '')
+            + (active && rep > i ? ' is-past' : '')
+          }>
+            <span>{String(i + 1).padStart(2, '0')}</span>
+            <span>{fmt(row.hold)}</span>
+            <span>{row.rest ? fmt(row.rest) : '—'}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div className="sim__controls">
+        {isIdle  && <button className="sim__btn sim__btn--start" onClick={doStart}>▶ Iniciar sesión</button>}
+        {active  && <button className="sim__btn sim__btn--stop"  onClick={doStop}>◼ Detener</button>}
+        {isDone  && <button className="sim__btn sim__btn--reset" onClick={doStop}>↺ Nueva sesión</button>}
+      </div>
+    </div>
+  );
+}
+
 // === SCHEDULE + TABLES ===
 function Schedule() {
+  const [activeSim, setActiveSim] = useState(null);
+  const isMobile = useIsMobile();
+  const toggle = (type) => setActiveSim(v => v === type ? null : type);
+
   return (
     <section id="horarios" className="section section--wide" data-screen-label="06 Horarios">
       <div className="container">
@@ -28,22 +204,92 @@ function Schedule() {
           <div className="eyebrow">Tablas de entrenamiento</div>
           <h2 className="heading" style={{fontSize: 'clamp(28px, 4vw, 48px)'}}>Hipoxia & Hipercapnia</h2>
         </div>
+
         <div className="tables-grid">
-          <div className="table-card">
-            <div className="formula">O<sub>2</sub></div>
-            <h3>Tabla de Oxígeno</h3>
-            <p>Se enfocan en la resistencia a la falta de oxígeno. Para funcionar con <strong>hipoxia</strong> (bajo nivel de oxígeno), mejorar la capacidad pulmonar, la tolerancia y aumentar la duración de las apneas.</p>
-            <div className="open-sim">Abrir simulador →</div>
+          {/* O2 */}
+          <div className="table-card-wrap">
+            <div className={'table-card' + (activeSim === 'O2' ? ' is-open' : '')} onClick={() => toggle('O2')}>
+              <div className="formula">O<sub>2</sub></div>
+              <h3>Tabla de Oxígeno</h3>
+              <p className="text--desktop">Se enfocan en la resistencia a la falta de oxígeno. Para funcionar con <strong>hipoxia</strong> (bajo nivel de oxígeno), mejorar la capacidad pulmonar, la tolerancia y aumentar la duración de las apneas.</p>
+              <p className="text--mobile">Mejoran la resistencia a la <strong>hipoxia</strong> y aumentan la duración de las apneas.</p>
+              <div className="open-sim">
+                {activeSim === 'O2' ? 'Cerrar simulador ✕' : 'Abrir simulador →'}
+              </div>
+            </div>
+            {isMobile && activeSim === 'O2' && (
+              <div className="sim-inline"><ApneaTable type="O2" /></div>
+            )}
           </div>
-          <div className="table-card">
-            <div className="formula">CO<sub>2</sub></div>
-            <h3>Tabla de CO₂</h3>
-            <p>Se centran en la tolerancia a la <strong>hipercapnia</strong> (exceso de dióxido de carbono), entrenando al cuerpo para resistir la acidosis sin llegar a niveles críticos de hipoxia.</p>
-            <div className="open-sim">Abrir simulador →</div>
+
+          {/* CO2 */}
+          <div className="table-card-wrap">
+            <div className={'table-card' + (activeSim === 'CO2' ? ' is-open' : '')} onClick={() => toggle('CO2')}>
+              <div className="formula">CO<sub>2</sub></div>
+              <h3>Tabla de CO₂</h3>
+              <p className="text--desktop">Se centran en la tolerancia a la <strong>hipercapnia</strong> (exceso de dióxido de carbono), entrenando al cuerpo para resistir la acidosis sin llegar a niveles críticos de hipoxia.</p>
+              <p className="text--mobile">Entrenan la tolerancia al CO₂ (<strong>hipercapnia</strong>) para resistir la acidosis.</p>
+              <div className="open-sim">
+                {activeSim === 'CO2' ? 'Cerrar simulador ✕' : 'Abrir simulador →'}
+              </div>
+            </div>
+            {isMobile && activeSim === 'CO2' && (
+              <div className="sim-inline"><ApneaTable type="CO2" /></div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Modal — desktop only, rendered via portal to escape stacking contexts */}
+      {!isMobile && activeSim && ReactDOM.createPortal(
+        <div className="sim-backdrop" onClick={() => setActiveSim(null)}>
+          <div className="sim-modal" onClick={e => e.stopPropagation()}>
+            <button className="sim-close" onClick={() => setActiveSim(null)}>✕</button>
+            <ApneaTable key={activeSim} type={activeSim} />
+          </div>
+        </div>,
+        document.getElementById('overlay-root')
+      )}
     </section>
+  );
+}
+
+// === FILTER SELECT (custom dropdown) ===
+function FilterSelect({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const label = (options.find(([k]) => k === value) || [])[1] || placeholder;
+
+  return (
+    <div className={'filter-select' + (open ? ' is-open' : '')} ref={ref}>
+      <button className="filter-select__btn" onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <svg className="filter-select__arrow" viewBox="0 0 10 6" fill="none">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="filter-select__panel">
+          {options.map(([k, l]) => (
+            <button
+              key={k}
+              className={'filter-select__option' + (value === k ? ' is-active' : '')}
+              onClick={() => { onChange(k); setOpen(false); }}
+            >
+              {value === k && <span className="filter-select__dot"/>}
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -59,7 +305,8 @@ function Events() {
     (!onlyAvail || e.cupos > 0)
   );
 
-  const tabs = [['ALL','Todas'],['ECO','Eco'],['STA','Estática'],['DYN','Dinámica'],['DEPTH','Profundidad'],['EDU','Charlas']];
+  const discOpts = [['ALL','Todas'],['ECO','Eco'],['STA','Estática'],['DYN','Dinámica'],['DEPTH','Profundidad'],['EDU','Charlas']];
+  const levelOpts = [['ALL','Todos los niveles'],['Principiante','Principiante'],['Intermedio','Intermedio'],['Competitivo','Competitivo']];
 
   return (
     <section id="eventos" className="section section--wide" data-screen-label="07 Eventos">
@@ -70,22 +317,17 @@ function Events() {
           <p className="lead">Limpiezas de playa, clínicas, salidas grupales y encuentros del club. Inscripciones abiertas y próximas actividades.</p>
         </div>
 
-        <div className="filters">
-          <div className="filter-tabs">
-            {tabs.map(([k,l]) => (
-              <button key={k} className={disc === k ? 'active' : ''} onClick={() => setDisc(k)}>{l}</button>
-            ))}
-          </div>
-          <div className="filter-row">
-            <select value={level} onChange={e => setLevel(e.target.value)}>
-              <option value="ALL">Todos los niveles</option>
-              <option>Principiante</option>
-              <option>Intermedio</option>
-              <option>Competitivo</option>
-            </select>
-            <label><input type="checkbox" checked={onlyAvail} onChange={e => setOnlyAvail(e.target.checked)}/> Solo disponibles</label>
-            <span style={{marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-3)', textTransform: 'uppercase'}}>{filtered.length} eventos</span>
-          </div>
+        <div className="filter-bar">
+          <FilterSelect value={disc} onChange={setDisc} options={discOpts} placeholder="Disciplina"/>
+          <FilterSelect value={level} onChange={setLevel} options={levelOpts} placeholder="Nivel"/>
+          <button
+            className={'filter-toggle' + (onlyAvail ? ' is-on' : '')}
+            onClick={() => setOnlyAvail(v => !v)}
+          >
+            <span className="filter-toggle__track"><span className="filter-toggle__thumb"/></span>
+            Solo disponibles
+          </button>
+          <span className="filter-count">{filtered.length} evento{filtered.length !== 1 ? 's' : ''}</span>
         </div>
 
         <div className="events-grid">
@@ -187,7 +429,8 @@ function Directiva() {
         <div className="section__head">
           <div className="eyebrow">Historia institucional</div>
           <h2 className="heading">Directiva del club</h2>
-          <p className="lead">Registro permanente de quienes han liderado el Club Kinchika año a año, velando por el crecimiento y la transparencia de nuestra organización.</p>
+          <p className="lead text--desktop">Registro permanente de quienes han liderado el Club Kinchika año a año, velando por el crecimiento y la transparencia de nuestra organización.</p>
+          <p className="lead text--mobile">Registro histórico de directivas del Club Kinchika.</p>
         </div>
 
         <div className="year-tabs">
@@ -231,7 +474,8 @@ function Location() {
             <h3>Piscina Municipal de Lo Prado</h3>
             <div className="address">Los Copihues 5797</div>
             <div className="city">Lo Prado · Región Metropolitana · Chile</div>
-            <p>Espacio que hemos transformado en nuestro centro de entrenamiento gracias al apoyo de la municipalidad. Aquí desarrollamos las sesiones de nado, acondicionamiento y técnica de apnea.</p>
+            <p className="text--desktop">Espacio que hemos transformado en nuestro centro de entrenamiento gracias al apoyo de la municipalidad. Aquí desarrollamos las sesiones de nado, acondicionamiento y técnica de apnea.</p>
+            <p className="text--mobile">Nuestro centro de entrenamiento para nado, acondicionamiento y técnica de apnea.</p>
             <a href="https://maps.google.com/?q=Los+Copihues+5797,+Lo+Prado" target="_blank" rel="noopener" className="btn btn--outline">Ver en Google Maps →</a>
           </div>
           <div className="location-map">
